@@ -1,1 +1,1060 @@
-<!DOCTYPE html> <html lang="zh-CN"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>我的课程中心</title> <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script> <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13"></script> <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap'); :root { --bg: #f8fafc; --card: white; --text: #1e2937; --accent: #3b82f6; --bg-progress-bg: #e2e8f0; } [data-theme="dark"] { --bg: #0f172a; --card: #1e2937; --text: #e2e8f0; --accent: #60a5fa; --bg-progress-bg: #e2e8f0; } html {overflow-y: scroll;} body { font-family: 'Noto Sans SC', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); min-height: 100vh; box-sizing: border-box; } .container { max-width: 960px; margin: 0 auto; background: var(--card); border-radius: 16px; box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1); overflow: hidden; } .header { background: linear-gradient(90deg, #3b82f6, #2563eb); color: white; padding: 24px 32px; position: relative; } .header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; } .theme-toggle { position: absolute; top: 20px; right: 32px; background: rgba(255,255,255,0.25); border: none; color: white; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1.4rem; } .alert { padding: 16px 24px; background: #fef3c7; color: #854d0e; margin: 20px 32px; border-radius: 12px; border-left: 5px solid #f59e0b; } .course-tabs { display: flex; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; overflow-x: auto; scrollbar-width: thin; } [data-theme="dark"] .course-tabs { background: #334155; border-color: #475569; } .tab { padding: 16px 24px; cursor: pointer; white-space: nowrap; font-weight: 500; transition: all 0.2s; } .tab.active { background: var(--card); border-bottom: 3px solid var(--accent); color: var(--accent); } .search-box { padding: 16px 32px; background: var(--card); } input { width: 95%; padding: 12px 20px; border: 1px solid #cbd5e1; border-radius: 9999px; font-size: 1rem; } [data-theme="dark"] input { background: #475569; border-color: #64748b; color: white; } .course-content { padding-bottom: 20px; } .chapter { border-bottom: 1px solid #e2e8f0; } [data-theme="dark"] .chapter { border-color: #475569; } .chapter-header { padding: 20px 32px; display: flex; align-items: center; cursor: pointer; } .chapter-header:hover { background: rgba(59,130,246,0.05); } .arrow { font-size: 1.5rem; margin-right: 12px; transition: transform 0.3s; } .chapter-header.expanded .arrow { transform: rotate(90deg); } .chapter-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; } .chapter-content.expanded { max-height: 5000px; } .lesson { display: flex; align-items: center; padding: 16px 32px 16px 68px; border-top: 1px solid #e2e8f0; gap: 12px; } .lesson-circle { width: 28px; height: 28px; border: 2px solid #94a3b8; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 600; flex-shrink: 0; z-index: 30; } .lesson.completed .lesson-circle { background: #22c55e; border-color: #22c55e; color: white; } .lesson.highlight .lesson-circle { background: #3b82f6; border-color: #3b82f6; color: white; } .lesson-info { flex: 1; } .btn-group button { padding: 6px 14px; margin-left: 6px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; } .btn-material { background: #8b5cf6; color: white; } .btn-watch { background: #3b82f6; color: white; } .btn-download { background: #22c55e; color: white; } .highlight-tag { background: #fef3c7; color: #854d0e; font-size: 0.8rem; padding: 2px 10px; border-radius: 9999px; margin-left: auto; } .progress-bar { height: 6px; background: var(--bg-progress-bg); border-radius: 9999px; margin-top: 8px; width: 100%; overflow: hidden; } .progress-fill { height: 100%; background: var(--accent); border-radius: 9999px; } #dlModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; } .dl-card { background: var(--card); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; color: var(--text); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); } .dl-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; } .dl-status { font-size: 0.9rem; color: #64748b; margin-bottom: 20px; word-break: break-all; } .dl-progress-bg { width: 100%; height: 12px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px; } [data-theme="dark"] .dl-progress-bg { background: #334155; } .dl-progress-bar { width: 0%; height: 100%; background: #22c55e; transition: width 0.3s; } .dl-percent { font-weight: bold; color: #22c55e; } </style> </head> <body data-theme="light"> <div class="container"> <div class="header"> <h1>我的课程中心</h1> <button class="theme-toggle" onclick="toggleTheme()">🌙</button> </div> <div class="course-tabs" id="course-tabs"></div> <div class="search-box"> <input type="text" id="searchInput" placeholder="搜索课时标题或章节..." onkeyup="filterLessons()"> </div> <div class="course-content" id="course-content"></div> </div> <div id="videoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; align-items:center; justify-content:center;"> <div style="width:90%; max-width:1200px; background:#000; padding:10px; border-radius:8px; position:relative;"> <button onclick="closeVideo()" style="position:absolute; top:-40px; right:0; color:white; font-size:1.5rem; background:none; border:none;">✕</button> <video id="videoPlayer" controls style="width:100%; max-height:80vh;"></video> </div> </div> <div id="dlModal"> <div class="dl-card"> <div class="dl-title">正在下载视频</div> <div class="dl-status" id="dlStatus">正在准备下载...</div> <div class="dl-progress-bg"> <div class="dl-progress-bar" id="dlProgressBar"></div> </div> <div class="dl-percent" id="dlPercent">0%</div> </div> </div> <script> let coursesData = []; let currentCourseIndex = 0; let searchTerm = ''; let progressData = {}; let expandedStates = {}; const PROGRESS_KEY = 'courseProgress'; function loadProgress() { const saved = localStorage.getItem(PROGRESS_KEY); if (saved) progressData = JSON.parse(saved); } function saveProgress() { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressData)); } function getLessonKey(courseId, chapterId, lessonId) { return `${courseId}_${chapterId}_${lessonId}`; } function isCompleted(courseId, chapterId, lessonId) { const key = getLessonKey(courseId, chapterId, lessonId); return !!(progressData[courseId] && progressData[courseId][key]); } function toggleCompletion(courseId, chapterId, lessonId) { if (!progressData[courseId]) progressData[courseId] = {}; const key = getLessonKey(courseId, chapterId, lessonId); progressData[courseId][key] = !progressData[courseId][key]; saveProgress(); renderCurrentCourse(true); } async function loadCourses() { try { const response = await fetch('courses.xlsx'); if (!response.ok) throw new Error('文件不存在'); const arrayBuffer = await response.arrayBuffer(); const workbook = XLSX.read(arrayBuffer, { type: 'array' }); const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); coursesData = parseExcelToCourses(jsonData); } catch (e) { document.getElementById('course-content').innerHTML = `<div class="alert">⚠️ 未找到 courses.xlsx 文件</div>`; return; } loadProgress(); renderTabs(); renderCurrentCourse(); } function parseExcelToCourses(rows) { const coursesMap = {}; rows.forEach(row => { const courseId = String(row.CourseID || '').trim(); const classGroup = String(row.ClassGroup || row['ClassGroup'] || '').trim(); const courseTitle = String(row.CourseTitle || row['课程标题'] || '').trim(); let chapterId = String(row.ChapterID || '').trim(); let chapterTitle = String(row.ChapterTitle || row['章节标题'] || '').trim(); const lessonId = String(row.LessonID || '').trim(); const lessonTitle = String(row.LessonTitle || row['课时标题'] || '').trim(); const duration = parseInt(row.Duration || 300); const videoUrl = String(row.VideoURL || row['视频链接'] || '').trim(); const imgUrl = String(row.ImgURL || row['图片链接'] || '').trim(); const highlight = !!(row.Highlight || row['Highlight']); if (!courseId || !lessonTitle) return; if (!coursesMap[courseId]) { coursesMap[courseId] = { id: courseId, title: courseTitle || `课程 ${courseId}`, classGroup: classGroup, chapters: [] }; } const course = coursesMap[courseId]; const lessonData = { id: lessonId, title: lessonTitle, duration, videoUrl, imgUrl, highlight, courseTitle: course.title, chapterId: chapterId || 'flat', chapterTitle: chapterTitle || '' }; if (!chapterId && !chapterTitle) { let flatChapter = course.chapters.find(ch => ch.id === 'flat'); if (!flatChapter) { flatChapter = { id: 'flat', title: '全部课时', lessons: [], expanded: true }; course.chapters.push(flatChapter); } flatChapter.lessons.push(lessonData); } else { if (!chapterTitle) chapterTitle = "未分类章节"; if (!chapterId) chapterId = "1"; let chapter = course.chapters.find(ch => ch.id === chapterId); if (!chapter) { chapter = { id: chapterId, title: chapterTitle, lessons: [], expanded: false }; course.chapters.push(chapter); } lessonData.chapterId = chapterId; lessonData.chapterTitle = chapterTitle; chapter.lessons.push(lessonData); } }); Object.values(coursesMap).forEach(course => { course.chapters.sort((a,b) => parseFloat(a.id) - parseFloat(b.id) || 0); course.chapters.forEach(ch => ch.lessons.sort((a,b) => parseFloat(a.id) - parseFloat(b.id))); }); return Object.values(coursesMap); } function calculateProgress(course) { let total = 0, completed = 0; course.chapters.forEach(ch => { ch.lessons.forEach(l => { total++; if (isCompleted(course.id, l.chapterId, l.id)) completed++; }); }); return total ? Math.round((completed / total) * 100) : 0; } function renderTabs() { const container = document.getElementById('course-tabs'); container.innerHTML = coursesData.map((course, i) => { const progress = calculateProgress(course); const classGroup = course.classGroup || '无分组'; return `<div class="tab ${i === currentCourseIndex ? 'active' : ''}" onclick="switchCourse(${i})"> <div>${course.id} ${course.title}</div> <div style="font-size: 0.7rem; opacity: 0.7; margin-top: 2px;">${classGroup}</div> <div class="progress-bar"> <div class="progress-fill" style="width:${progress}%"></div> </div> </div>`; }).join(''); } function toggleCompletion(courseId, chapterId, lessonId) { if (!progressData[courseId]) progressData[courseId] = {}; const key = getLessonKey(courseId, chapterId, lessonId); progressData[courseId][key] = !progressData[courseId][key]; saveProgress(); renderTabs(); renderCurrentCourse(true); } function switchCourse(index) { currentCourseIndex = index; searchTerm = ''; document.getElementById('searchInput').value = ''; renderTabs(); renderCurrentCourse(); } function playVideo(url) { const modal = document.getElementById('videoModal'); const video = document.getElementById('videoPlayer'); modal.style.display = 'flex'; if (Hls.isSupported() && url.includes('.m3u8')) { const hls = new Hls(); hls.loadSource(url); hls.attachMedia(video); } else { video.src = url; } video.play(); } function closeVideo() { document.getElementById('videoPlayer').pause(); document.getElementById('videoModal').style.display = 'none'; } function generateFileName(lesson) { const safeStr = (str) => (str || '').toString().trim().replace(/[/\\?%*:|"<>]/g, ''); const courseTitle = safeStr(lesson.courseTitle); const chapterId = lesson.chapterId === 'flat' ? '' : safeStr(lesson.chapterId); const chapterTitle = (lesson.chapterId === 'flat' || lesson.chapterTitle === '未分类章节') ? '' : safeStr(lesson.chapterTitle); const lessonId = safeStr(lesson.id); const lessonTitle = safeStr(lesson.title); let name = `${courseTitle}_${chapterId}_${chapterTitle}_${lessonId}_${lessonTitle}`; return name.replace(/_{2,}/g, '_').replace(/_$/, ''); } function updateDlUI(show, status = '', percent = 0) { document.getElementById('dlModal').style.display = show ? 'flex' : 'none'; document.getElementById('dlStatus').innerText = status; document.getElementById('dlProgressBar').style.width = percent + '%'; document.getElementById('dlPercent').innerText = Math.floor(percent) + '%'; } async function fetchMp4WithProgress(url, baseFileName) { try { updateDlUI(true, '正在连接服务器...', 0); const response = await fetch(url); if (!response.ok) throw new Error("视频请求失败: " + response.status); const contentLength = response.headers.get('content-length'); const total = contentLength ? parseInt(contentLength, 10) : 0; let loaded = 0; const reader = response.body.getReader(); const chunks = []; while (true) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); loaded += value.length; if (total) { const percent = (loaded / total) * 100; const loadedMB = (loaded / 1024 / 1024).toFixed(1); const totalMB = (total / 1024 / 1024).toFixed(1); updateDlUI(true, `正在下载视频: ${loadedMB}MB / ${totalMB}MB`, percent); } else { const loadedMB = (loaded / 1024 / 1024).toFixed(1); updateDlUI(true, `正在下载视频: 已接收 ${loadedMB}MB...`, 90); } } updateDlUI(true, '下载完成，正在保存文件...', 100); const blob = new Blob(chunks, { type: 'video/mp4' }); const objectUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = objectUrl; a.download = baseFileName + '.mp4'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(objectUrl); setTimeout(() => updateDlUI(false), 1500); } catch (error) { console.error('视频流式下载失败，尝试新窗口直接下载:', error); alert("前端拦截下载失败，将为您在新窗口打开原始链接进行下载。"); updateDlUI(false); const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = baseFileName + '.mp4'; a.target = "_blank"; document.body.appendChild(a); a.click(); document.body.removeChild(a); } } async function fetchAndMergeM3u8(url, baseFileName) { try { updateDlUI(true, '正在获取播放列表信息...', 5); const response = await fetch(url); if (!response.ok) throw new Error("获取 m3u8 失败"); const m3u8Text = await response.text(); if (m3u8Text.includes("#EXT-X-STREAM-INF")) { const lines = m3u8Text.split('\n'); for (let i = 0; i < lines.length; i++) { if (lines[i].startsWith('#EXT-X-STREAM-INF')) { const subUrl = new URL(lines[i + 1].trim(), url).href; return await fetchAndMergeM3u8(subUrl, baseFileName); } } } if (m3u8Text.includes("#EXT-X-KEY")) { alert("⚠️ 提示：检测到该视频被加密(DRM)，直接下载合并后可能无法正常播放。"); } const lines = m3u8Text.split('\n'); const tsUrls = []; for (const line of lines) { if (line.trim() && !line.startsWith('#')) { tsUrls.push(new URL(line.trim(), url).href); } } if (tsUrls.length === 0) throw new Error("未解析到视频碎片"); const tsBuffers = new Array(tsUrls.length); let downloadedCount = 0; const maxConcurrent = 4; for (let i = 0; i < tsUrls.length; i += maxConcurrent) { const chunkUrls = tsUrls.slice(i, i + maxConcurrent); const promises = chunkUrls.map(async (tsUrl, index) => { let retries = 3; while (retries > 0) { try { const res = await fetch(tsUrl); if (!res.ok) throw new Error("碎片下载失败"); const buffer = await res.arrayBuffer(); return { index: i + index, buffer }; } catch (e) { retries--; if (retries === 0) throw e; } } }); const results = await Promise.all(promises); results.forEach(r => { tsBuffers[r.index] = r.buffer; downloadedCount++; }); let percent = (downloadedCount / tsUrls.length) * 90; updateDlUI(true, `正在下载视频块: ${downloadedCount} / ${tsUrls.length}`, percent); } updateDlUI(true, '下载完成，正在合并视频流...', 95); let totalLength = 0; tsBuffers.forEach(b => totalLength += b.byteLength); const mergedBuffer = new Uint8Array(totalLength); let offset = 0; tsBuffers.forEach(b => { mergedBuffer.set(new Uint8Array(b), offset); offset += b.byteLength; }); updateDlUI(true, '合并成功！正在保存本地...', 100); const blob = new Blob([mergedBuffer], { type: 'video/mp2t' }); const objectUrl = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = objectUrl; a.download = baseFileName + '.ts'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(objectUrl); setTimeout(() => updateDlUI(false), 1500); } catch (error) { console.error('M3U8 下载/合并失败:', error); alert("下载失败！原因：" + error.message + "\n(这可能是由于目标服务器禁止跨域访问造成的)"); updateDlUI(false); } } async function downloadVideo(lesson) { if (!lesson || !lesson.videoUrl) return; const baseName = generateFileName(lesson); const isM3u8 = lesson.videoUrl.includes('.m3u8'); if (isM3u8) { await fetchAndMergeM3u8(lesson.videoUrl, baseName); } else { await fetchMp4WithProgress(lesson.videoUrl, baseName); } } function createChapterElement(courseId, chapter) { const div = document.createElement('div'); div.className = 'chapter'; const key = `${courseId}_${chapter.id}`; const isExpanded = expandedStates[key] !== undefined ? expandedStates[key] : (chapter.id === 'flat'); div.innerHTML = ` <div class="chapter-header ${isExpanded ? 'expanded' : ''}"> <span class="arrow">›</span> <div style="flex:1">${chapter.id !== 'flat' ? chapter.id + ' ' : ''}${chapter.title}</div> </div> <div class="chapter-content ${isExpanded ? 'expanded' : ''}"></div> `; const contentDiv = div.querySelector('.chapter-content'); chapter.lessons.forEach(lesson => { const completed = isCompleted(courseId, lesson.chapterId, lesson.id); const lessonEl = document.createElement('div'); lessonEl.className = `lesson ${completed ? 'completed' : ''} ${lesson.highlight ? 'highlight' : ''}`; const mins = Math.floor(lesson.duration / 60); const secs = lesson.duration % 60; let btnHTML = `<div class="btn-group">`; if (lesson.imgUrl) btnHTML += `<button class="btn-material" onclick="event.stopImmediatePropagation(); window.open('${lesson.imgUrl}', '_blank')">课件</button>`; if (lesson.videoUrl) { btnHTML += ` <button class="btn-watch" onclick="event.stopImmediatePropagation(); playVideo('${lesson.videoUrl}')">在线观看</button> <button class="btn-download">下载视频</button> `; } btnHTML += `</div>`; lessonEl.innerHTML = ` <div class="lesson-circle">${lesson.id}</div> <div class="lesson-info" style="flex:1"> <div>${lesson.title}</div> <div style="font-size:0.875rem;color:#64748b;">${mins}分${secs}秒</div> </div> ${lesson.highlight ? '<div class="highlight-tag">最近学习</div>' : ''} ${btnHTML} `; const downloadBtn = lessonEl.querySelector('.btn-download'); if (downloadBtn) { downloadBtn.addEventListener('click', function(e) { e.stopImmediatePropagation(); e.preventDefault(); downloadVideo(lesson); }); } const circle = lessonEl.querySelector('.lesson-circle'); circle.addEventListener('click', (e) => { e.stopImmediatePropagation(); toggleCompletion(courseId, lesson.chapterId, lesson.id); }); contentDiv.appendChild(lessonEl); }); const header = div.querySelector('.chapter-header'); header.addEventListener('click', () => { const content = div.querySelector('.chapter-content'); const newState = !content.classList.contains('expanded'); content.classList.toggle('expanded'); header.classList.toggle('expanded'); expandedStates[key] = newState; }); return div; } function renderCurrentCourse() { const container = document.getElementById('course-content'); const course = coursesData[currentCourseIndex]; if (!course) return; const progress = calculateProgress(course); let html = ` <div style="padding:24px 32px 12px;"> <h2 style="margin:0 0 8px 0;">${course.title}</h2> <div style="font-size:0.95rem;color:#64748b;">已完成 ${progress}%</div> </div> <div id="chapters-container"></div> `; container.innerHTML = html; const chaptersContainer = container.querySelector('#chapters-container'); course.chapters.forEach(chapter => { const hasMatch = !searchTerm || chapter.title.toLowerCase().includes(searchTerm) || chapter.lessons.some(l => l.title.toLowerCase().includes(searchTerm)); if (hasMatch) chaptersContainer.appendChild(createChapterElement(course.id, chapter)); }); } function filterLessons() { searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); renderCurrentCourse(); } function toggleTheme() { const isDark = document.body.getAttribute('data-theme') === 'dark'; const newTheme = isDark ? 'light' : 'dark'; document.body.setAttribute('data-theme', newTheme); localStorage.setItem('theme', newTheme); const toggleBtn = document.querySelector('.theme-toggle'); toggleBtn.innerText = newTheme === 'dark' ? '☀️' : '🌙'; } window.onload = () => { const savedTheme = localStorage.getItem('theme') || 'light'; document.body.setAttribute('data-theme', savedTheme); const toggleBtn = document.querySelector('.theme-toggle'); toggleBtn.innerText = savedTheme === 'dark' ? '☀️' : '🌙'; loadCourses(); }; </script> </body> </html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的课程中心</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e2937;
+      --accent: #3b82f6;
+      --progress-bg: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --card: #1e2937;
+      --text: #e2e8f0;
+      --accent: #60a5fa;
+      --progress-bg: #334155;
+      --muted: #94a3b8;
+    }
+
+    html { overflow-y: scroll; }
+
+    body {
+      font-family: 'Noto Sans SC', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+      color: white;
+      padding: 24px 32px;
+      position: relative;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 20px;
+      right: 32px;
+      background: rgba(255, 255, 255, 0.25);
+      border: none;
+      color: white;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.4rem;
+    }
+
+    .alert {
+      padding: 16px 24px;
+      background: #fef3c7;
+      color: #854d0e;
+      margin: 20px 32px;
+      border-radius: 12px;
+      border-left: 5px solid #f59e0b;
+    }
+
+    .course-tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    [data-theme="dark"] .course-tabs {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .tab {
+      padding: 16px 24px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: var(--card);
+      border-bottom: 3px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .search-box {
+      padding: 16px 32px;
+      background: var(--card);
+    }
+
+    input {
+      width: 95%;
+      padding: 12px 20px;
+      border: 1px solid #cbd5e1;
+      border-radius: 9999px;
+      font-size: 1rem;
+    }
+
+    [data-theme="dark"] input {
+      background: #475569;
+      border-color: #64748b;
+      color: white;
+    }
+
+    .course-content { padding-bottom: 20px; }
+
+    .course-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 24px 32px 12px;
+    }
+
+    .course-toolbar h2 {
+      margin: 0 0 8px;
+    }
+
+    .course-progress {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .chapter {
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    [data-theme="dark"] .chapter {
+      border-color: #475569;
+    }
+
+    .chapter-header {
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .chapter-header:hover {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .arrow {
+      font-size: 1.5rem;
+      margin-right: 12px;
+      transition: transform 0.3s;
+    }
+
+    .chapter-header.expanded .arrow {
+      transform: rotate(90deg);
+    }
+
+    .chapter-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+
+    .chapter-content.expanded {
+      max-height: 5000px;
+    }
+
+    .lesson {
+      display: flex;
+      align-items: center;
+      padding: 16px 32px 16px 68px;
+      border-top: 1px solid #e2e8f0;
+      gap: 12px;
+    }
+
+    .lesson-circle {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #94a3b8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 600;
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .lesson.completed .lesson-circle {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: white;
+    }
+
+    .lesson.highlight .lesson-circle {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .lesson-info { flex: 1; }
+
+    .btn-group button,
+    .btn-batch-download {
+      padding: 6px 14px;
+      margin-left: 6px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .btn-material { background: #8b5cf6; color: white; }
+    .btn-watch { background: #3b82f6; color: white; }
+    .btn-download,
+    .btn-batch-download { background: #22c55e; color: white; }
+    .btn-batch-download {
+      padding: 10px 16px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .highlight-tag {
+      background: #fef3c7;
+      color: #854d0e;
+      font-size: 0.8rem;
+      padding: 2px 10px;
+      border-radius: 9999px;
+      margin-left: auto;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--progress-bg);
+      border-radius: 9999px;
+      margin-top: 8px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 9999px;
+    }
+
+    #videoModal,
+    #dlModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #videoModal {
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+    }
+
+    #dlModal {
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 2000;
+    }
+
+    .video-card {
+      width: 90%;
+      max-width: 1200px;
+      background: #000;
+      padding: 10px;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .video-close {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      color: white;
+      font-size: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .dl-card {
+      background: var(--card);
+      padding: 30px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 420px;
+      text-align: center;
+      color: var(--text);
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    }
+
+    .dl-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .dl-status {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      word-break: break-all;
+    }
+
+    .dl-progress-bg {
+      width: 100%;
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    [data-theme="dark"] .dl-progress-bg {
+      background: #334155;
+    }
+
+    .dl-progress-bar {
+      width: 0%;
+      height: 100%;
+      background: #22c55e;
+      transition: width 0.3s;
+    }
+
+    .dl-percent {
+      font-weight: bold;
+      color: #22c55e;
+    }
+
+    @media (max-width: 640px) {
+      .course-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .btn-batch-download {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .lesson {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-left: 32px;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="container">
+    <div class="header">
+      <h1>我的课程中心</h1>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+    </div>
+
+    <div class="course-tabs" id="course-tabs"></div>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜索课时标题或章节..." onkeyup="filterLessons()">
+    </div>
+
+    <div class="course-content" id="course-content"></div>
+  </div>
+
+  <div id="videoModal">
+    <div class="video-card">
+      <button class="video-close" onclick="closeVideo()">✕</button>
+      <video id="videoPlayer" controls style="width:100%; max-height:80vh;"></video>
+    </div>
+  </div>
+
+  <div id="dlModal">
+    <div class="dl-card">
+      <div class="dl-title" id="dlTitle">正在下载视频</div>
+      <div class="dl-status" id="dlStatus">正在准备下载...</div>
+      <div class="dl-progress-bg">
+        <div class="dl-progress-bar" id="dlProgressBar"></div>
+      </div>
+      <div class="dl-percent" id="dlPercent">0%</div>
+    </div>
+  </div>
+
+  <script>
+    let coursesData = [];
+    let currentCourseIndex = 0;
+    let searchTerm = '';
+    let progressData = {};
+    let expandedStates = {};
+    let activeHls = null;
+
+    const PROGRESS_KEY = 'courseProgress';
+    const INVALID_NAME_RE = /[/\\?%*:|"<>]/g;
+
+    function loadProgress() {
+      const saved = localStorage.getItem(PROGRESS_KEY);
+      if (saved) progressData = JSON.parse(saved);
+    }
+
+    function saveProgress() {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressData));
+    }
+
+    function cleanName(value, fallback = '未命名') {
+      const text = String(value || '').trim() || fallback;
+      return text.replace(INVALID_NAME_RE, '_').replace(/\s+/g, ' ').replace(/[. ]+$/g, '') || fallback;
+    }
+
+    function getExtension(url, fallback = '.mp4') {
+      try {
+        const pathname = new URL(url).pathname;
+        const match = pathname.match(/\.[a-z0-9]{2,8}$/i);
+        return match ? match[0] : fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function getLessonKey(courseId, chapterId, lessonId) {
+      return `${courseId}_${chapterId}_${lessonId}`;
+    }
+
+    function isCompleted(courseId, chapterId, lessonId) {
+      const key = getLessonKey(courseId, chapterId, lessonId);
+      return !!(progressData[courseId] && progressData[courseId][key]);
+    }
+
+    function toggleCompletion(courseId, chapterId, lessonId) {
+      if (!progressData[courseId]) progressData[courseId] = {};
+      const key = getLessonKey(courseId, chapterId, lessonId);
+      progressData[courseId][key] = !progressData[courseId][key];
+      saveProgress();
+      renderTabs();
+      renderCurrentCourse();
+    }
+
+    async function loadCourses() {
+      try {
+        const response = await fetch('courses.xlsx');
+        if (!response.ok) throw new Error('文件不存在');
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        coursesData = parseExcelToCourses(jsonData);
+      } catch (error) {
+        document.getElementById('course-content').innerHTML = '<div class="alert">⚠️ 未找到 courses.xlsx 文件</div>';
+        return;
+      }
+
+      loadProgress();
+      renderTabs();
+      renderCurrentCourse();
+    }
+
+    function parseExcelToCourses(rows) {
+      const coursesMap = {};
+
+      rows.forEach(row => {
+        const courseId = String(row.CourseID || '').trim();
+        const classGroup = String(row.ClassGroup || row['ClassGroup'] || '').trim();
+        const courseTitle = String(row.CourseTitle || row['课程标题'] || '').trim();
+        let chapterId = String(row.ChapterID || '').trim();
+        let chapterTitle = String(row.ChapterTitle || row['章节标题'] || '').trim();
+        const lessonId = String(row.LessonID || '').trim();
+        const lessonTitle = String(row.LessonTitle || row['课时标题'] || '').trim();
+        const duration = parseInt(row.Duration || 300, 10);
+        const videoUrl = String(row.VideoURL || row['视频链接'] || '').trim();
+        const imgUrl = String(row.ImgURL || row['图片链接'] || '').trim();
+        const highlight = !!(row.Highlight || row['Highlight']);
+
+        if (!courseId || !lessonTitle) return;
+
+        if (!coursesMap[courseId]) {
+          coursesMap[courseId] = {
+            id: courseId,
+            title: courseTitle || `课程 ${courseId}`,
+            classGroup,
+            chapters: []
+          };
+        }
+
+        const course = coursesMap[courseId];
+        const lessonData = {
+          id: lessonId,
+          title: lessonTitle,
+          duration,
+          videoUrl,
+          imgUrl,
+          highlight,
+          courseTitle: course.title,
+          chapterId: chapterId || 'flat',
+          chapterTitle: chapterTitle || ''
+        };
+
+        if (!chapterId && !chapterTitle) {
+          let flatChapter = course.chapters.find(chapter => chapter.id === 'flat');
+          if (!flatChapter) {
+            flatChapter = { id: 'flat', title: '全部课时', lessons: [], expanded: true };
+            course.chapters.push(flatChapter);
+          }
+          flatChapter.lessons.push(lessonData);
+          return;
+        }
+
+        if (!chapterTitle) chapterTitle = '未分类章节';
+        if (!chapterId) chapterId = '1';
+
+        let chapter = course.chapters.find(item => item.id === chapterId);
+        if (!chapter) {
+          chapter = { id: chapterId, title: chapterTitle, lessons: [], expanded: false };
+          course.chapters.push(chapter);
+        }
+
+        lessonData.chapterId = chapterId;
+        lessonData.chapterTitle = chapterTitle;
+        chapter.lessons.push(lessonData);
+      });
+
+      Object.values(coursesMap).forEach(course => {
+        course.chapters.sort((a, b) => parseFloat(a.id) - parseFloat(b.id) || 0);
+        course.chapters.forEach(chapter => {
+          chapter.lessons.sort((a, b) => parseFloat(a.id) - parseFloat(b.id));
+        });
+      });
+
+      return Object.values(coursesMap);
+    }
+
+    function calculateProgress(course) {
+      let total = 0;
+      let completed = 0;
+      course.chapters.forEach(chapter => {
+        chapter.lessons.forEach(lesson => {
+          total++;
+          if (isCompleted(course.id, lesson.chapterId, lesson.id)) completed++;
+        });
+      });
+      return total ? Math.round((completed / total) * 100) : 0;
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('course-tabs');
+      container.innerHTML = coursesData.map((course, index) => {
+        const progress = calculateProgress(course);
+        const classGroup = course.classGroup || '无分组';
+        return `
+          <div class="tab ${index === currentCourseIndex ? 'active' : ''}" onclick="switchCourse(${index})">
+            <div>${course.id} ${course.title}</div>
+            <div style="font-size: 0.7rem; opacity: 0.7; margin-top: 2px;">${classGroup}</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${progress}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchCourse(index) {
+      currentCourseIndex = index;
+      searchTerm = '';
+      document.getElementById('searchInput').value = '';
+      renderTabs();
+      renderCurrentCourse();
+    }
+
+    function playVideo(url) {
+      const modal = document.getElementById('videoModal');
+      const video = document.getElementById('videoPlayer');
+
+      closeVideo(false);
+      modal.style.display = 'flex';
+
+      if (window.Hls && Hls.isSupported() && url.includes('.m3u8')) {
+        activeHls = new Hls();
+        activeHls.loadSource(url);
+        activeHls.attachMedia(video);
+      } else {
+        video.src = url;
+      }
+
+      video.play();
+    }
+
+    function closeVideo(hide = true) {
+      const modal = document.getElementById('videoModal');
+      const video = document.getElementById('videoPlayer');
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      if (activeHls) {
+        activeHls.destroy();
+        activeHls = null;
+      }
+      if (hide) modal.style.display = 'none';
+    }
+
+    function generateFileName(lesson) {
+      const chapterId = lesson.chapterId === 'flat' ? '' : cleanName(lesson.chapterId, '');
+      const chapterTitle = (lesson.chapterId === 'flat' || lesson.chapterTitle === '未分类章节') ? '' : cleanName(lesson.chapterTitle, '');
+      const lessonId = cleanName(lesson.id, '');
+      const lessonTitle = cleanName(lesson.title, '未命名课时');
+      return `${chapterId} ${chapterTitle} ${lessonId} ${lessonTitle}`.replace(/\s+/g, ' ').trim();
+    }
+
+    function updateDlUI(show, status = '', percent = 0, title = '正在下载视频') {
+      document.getElementById('dlModal').style.display = show ? 'flex' : 'none';
+      document.getElementById('dlTitle').innerText = title;
+      document.getElementById('dlStatus').innerText = status;
+      document.getElementById('dlProgressBar').style.width = percent + '%';
+      document.getElementById('dlPercent').innerText = Math.floor(percent) + '%';
+    }
+
+    async function fetchBlob(url, onProgress) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`请求失败: ${response.status}`);
+
+      const total = parseInt(response.headers.get('content-length') || '0', 10);
+      const reader = response.body && response.body.getReader ? response.body.getReader() : null;
+      if (!reader) return await response.blob();
+
+      let loaded = 0;
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        if (onProgress) onProgress(loaded, total);
+      }
+
+      const type = response.headers.get('content-type') || 'application/octet-stream';
+      return new Blob(chunks, { type });
+    }
+
+    async function fetchM3u8VideoBlob(url, onProgress) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('获取 m3u8 失败');
+      const m3u8Text = await response.text();
+
+      if (m3u8Text.includes('#EXT-X-STREAM-INF')) {
+        const lines = m3u8Text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+            const subUrl = new URL(lines[i + 1].trim(), url).href;
+            return await fetchM3u8VideoBlob(subUrl, onProgress);
+          }
+        }
+      }
+
+      if (m3u8Text.includes('#EXT-X-KEY')) {
+        throw new Error('该 m3u8 包含加密信息，浏览器无法直接合并为视频');
+      }
+
+      const tsUrls = m3u8Text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+        .map(line => new URL(line, url).href);
+
+      if (!tsUrls.length) throw new Error('未解析到视频分片');
+
+      const tsBuffers = new Array(tsUrls.length);
+      let downloadedCount = 0;
+      const maxConcurrent = 4;
+
+      for (let i = 0; i < tsUrls.length; i += maxConcurrent) {
+        const chunkUrls = tsUrls.slice(i, i + maxConcurrent);
+        const results = await Promise.all(chunkUrls.map(async (tsUrl, index) => {
+          for (let retries = 3; retries > 0; retries--) {
+            try {
+              const res = await fetch(tsUrl);
+              if (!res.ok) throw new Error('视频分片下载失败');
+              return { index: i + index, buffer: await res.arrayBuffer() };
+            } catch (error) {
+              if (retries === 1) throw error;
+            }
+          }
+        }));
+
+        results.forEach(result => {
+          tsBuffers[result.index] = result.buffer;
+          downloadedCount++;
+        });
+
+        if (onProgress) onProgress(downloadedCount, tsUrls.length);
+      }
+
+      let totalLength = 0;
+      tsBuffers.forEach(buffer => totalLength += buffer.byteLength);
+      const mergedBuffer = new Uint8Array(totalLength);
+      let offset = 0;
+      tsBuffers.forEach(buffer => {
+        mergedBuffer.set(new Uint8Array(buffer), offset);
+        offset += buffer.byteLength;
+      });
+
+      return new Blob([mergedBuffer], { type: 'video/mp2t' });
+    }
+
+    async function fetchMp4WithProgress(url, baseFileName) {
+      try {
+        updateDlUI(true, '正在连接服务器...', 0);
+        const blob = await fetchBlob(url, (loaded, total) => {
+          if (total) {
+            const percent = (loaded / total) * 100;
+            const loadedMB = (loaded / 1024 / 1024).toFixed(1);
+            const totalMB = (total / 1024 / 1024).toFixed(1);
+            updateDlUI(true, `正在下载视频: ${loadedMB}MB / ${totalMB}MB`, percent);
+          } else {
+            const loadedMB = (loaded / 1024 / 1024).toFixed(1);
+            updateDlUI(true, `正在下载视频: 已接收 ${loadedMB}MB...`, 90);
+          }
+        });
+
+        updateDlUI(true, '下载完成，正在保存文件...', 100);
+        saveBlobByAnchor(blob, `${baseFileName}${getExtension(url, '.mp4')}`);
+        setTimeout(() => updateDlUI(false), 1500);
+      } catch (error) {
+        console.error('视频流式下载失败，尝试新窗口直接下载:', error);
+        alert('前端拦截下载失败，将为您在新窗口打开原始链接进行下载。');
+        updateDlUI(false);
+        saveUrlByAnchor(url, `${baseFileName}${getExtension(url, '.mp4')}`);
+      }
+    }
+
+    function saveBlobByAnchor(blob, fileName) {
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(objectUrl);
+    }
+
+    function saveUrlByAnchor(url, fileName) {
+      const anchor = document.createElement('a');
+      anchor.style.display = 'none';
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.target = '_blank';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    }
+
+    async function fetchAndMergeM3u8(url, baseFileName) {
+      try {
+        updateDlUI(true, '正在获取播放列表信息...', 5);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('获取 m3u8 失败');
+        const m3u8Text = await response.text();
+
+        if (m3u8Text.includes('#EXT-X-STREAM-INF')) {
+          const lines = m3u8Text.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+              const subUrl = new URL(lines[i + 1].trim(), url).href;
+              return await fetchAndMergeM3u8(subUrl, baseFileName);
+            }
+          }
+        }
+
+        if (m3u8Text.includes('#EXT-X-KEY')) {
+          alert('提示：检测到该视频被加密，直接下载合并后可能无法正常播放。');
+        }
+
+        const tsUrls = m3u8Text.split('\n')
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith('#'))
+          .map(line => new URL(line, url).href);
+
+        if (tsUrls.length === 0) throw new Error('未解析到视频碎片');
+
+        const tsBuffers = new Array(tsUrls.length);
+        let downloadedCount = 0;
+        const maxConcurrent = 4;
+
+        for (let i = 0; i < tsUrls.length; i += maxConcurrent) {
+          const chunkUrls = tsUrls.slice(i, i + maxConcurrent);
+          const results = await Promise.all(chunkUrls.map(async (tsUrl, index) => {
+            for (let retries = 3; retries > 0; retries--) {
+              try {
+                const res = await fetch(tsUrl);
+                if (!res.ok) throw new Error('碎片下载失败');
+                return { index: i + index, buffer: await res.arrayBuffer() };
+              } catch (error) {
+                if (retries === 1) throw error;
+              }
+            }
+          }));
+
+          results.forEach(result => {
+            tsBuffers[result.index] = result.buffer;
+            downloadedCount++;
+          });
+          updateDlUI(true, `正在下载视频块: ${downloadedCount} / ${tsUrls.length}`, (downloadedCount / tsUrls.length) * 90);
+        }
+
+        updateDlUI(true, '下载完成，正在合并视频流...', 95);
+        let totalLength = 0;
+        tsBuffers.forEach(buffer => totalLength += buffer.byteLength);
+        const mergedBuffer = new Uint8Array(totalLength);
+        let offset = 0;
+        tsBuffers.forEach(buffer => {
+          mergedBuffer.set(new Uint8Array(buffer), offset);
+          offset += buffer.byteLength;
+        });
+
+        updateDlUI(true, '合并成功，正在保存本地...', 100);
+        saveBlobByAnchor(new Blob([mergedBuffer], { type: 'video/mp2t' }), `${baseFileName}.ts`);
+        setTimeout(() => updateDlUI(false), 1500);
+      } catch (error) {
+        console.error('M3U8 下载/合并失败:', error);
+        alert(`下载失败！原因：${error.message}\n这可能是由于目标服务器禁止跨域访问造成的。`);
+        updateDlUI(false);
+      }
+    }
+
+    async function downloadVideo(lesson) {
+      if (!lesson || !lesson.videoUrl) return;
+      const baseName = generateFileName(lesson);
+      if (lesson.videoUrl.includes('.m3u8')) {
+        await fetchAndMergeM3u8(lesson.videoUrl, baseName);
+      } else {
+        await fetchMp4WithProgress(lesson.videoUrl, baseName);
+      }
+    }
+
+    async function getOrCreateDirectory(parentHandle, name) {
+      return await parentHandle.getDirectoryHandle(cleanName(name), { create: true });
+    }
+
+    async function writeBlobToFile(directoryHandle, fileName, blob) {
+      const fileHandle = await directoryHandle.getFileHandle(cleanName(fileName), { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }
+
+    async function downloadCurrentCourse() {
+      if (!window.showDirectoryPicker) {
+        alert('当前浏览器不支持按目录保存。请用新版 Chrome 或 Edge 打开本页面。');
+        return;
+      }
+
+      const course = coursesData[currentCourseIndex];
+      if (!course) return;
+
+      const lessons = [];
+      course.chapters.forEach(chapter => {
+        chapter.lessons.forEach(lesson => {
+          if (lesson.videoUrl) lessons.push({ chapter, lesson });
+        });
+      });
+
+      if (!lessons.length) {
+        alert('当前课程没有可下载的视频。');
+        return;
+      }
+
+      const rootHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const courseHandle = await getOrCreateDirectory(rootHandle, course.title);
+
+      let completed = 0;
+      let failed = 0;
+
+      updateDlUI(true, `准备下载 ${lessons.length} 个视频...`, 0, '一键下载当前课程');
+
+      for (const item of lessons) {
+        const { chapter, lesson } = item;
+        const chapterName = chapter.id === 'flat' ? '全部课时' : `${chapter.id} ${chapter.title}`;
+        const chapterHandle = await getOrCreateDirectory(courseHandle, chapterName);
+        const lessonName = `${cleanName(lesson.id, String(completed + 1)).padStart(2, '0')} ${cleanName(lesson.title, '未命名课时')}`;
+        const fileName = `${lessonName}${getExtension(lesson.videoUrl, '.mp4')}`;
+
+        try {
+          updateDlUI(true, `正在下载：${chapterName} / ${lessonName}`, (completed / lessons.length) * 100, '一键下载当前课程');
+          const isM3u8 = lesson.videoUrl.includes('.m3u8');
+          const blob = isM3u8
+            ? await fetchM3u8VideoBlob(lesson.videoUrl, (segmentDone, segmentTotal) => {
+                const coursePercent = (completed / lessons.length) * 100;
+                const lessonPercent = (segmentDone / segmentTotal) * (100 / lessons.length);
+                updateDlUI(
+                  true,
+                  `正在合并：${lessonName} (${segmentDone}/${segmentTotal})`,
+                  Math.min(coursePercent + lessonPercent, 99),
+                  '一键下载当前课程'
+                );
+              })
+            : await fetchBlob(lesson.videoUrl);
+          await writeBlobToFile(chapterHandle, isM3u8 ? `${lessonName}.ts` : fileName, blob);
+          completed++;
+        } catch (error) {
+          console.error('批量下载失败:', lesson, error);
+          failed++;
+          completed++;
+        }
+
+        updateDlUI(true, `已处理 ${completed}/${lessons.length}，失败 ${failed}`, (completed / lessons.length) * 100, '一键下载当前课程');
+      }
+
+      updateDlUI(true, `完成：成功 ${lessons.length - failed} 个，失败 ${failed} 个`, 100, '一键下载当前课程');
+      setTimeout(() => updateDlUI(false), 2500);
+    }
+
+    function createChapterElement(courseId, chapter) {
+      const div = document.createElement('div');
+      div.className = 'chapter';
+      const key = `${courseId}_${chapter.id}`;
+      const isExpanded = expandedStates[key] !== undefined ? expandedStates[key] : (chapter.id === 'flat');
+
+      div.innerHTML = `
+        <div class="chapter-header ${isExpanded ? 'expanded' : ''}">
+          <span class="arrow">›</span>
+          <div style="flex:1">${chapter.id !== 'flat' ? chapter.id + ' ' : ''}${chapter.title}</div>
+        </div>
+        <div class="chapter-content ${isExpanded ? 'expanded' : ''}"></div>
+      `;
+
+      const contentDiv = div.querySelector('.chapter-content');
+      chapter.lessons.forEach(lesson => {
+        const completed = isCompleted(courseId, lesson.chapterId, lesson.id);
+        const lessonEl = document.createElement('div');
+        lessonEl.className = `lesson ${completed ? 'completed' : ''} ${lesson.highlight ? 'highlight' : ''}`;
+        const mins = Math.floor(lesson.duration / 60);
+        const secs = lesson.duration % 60;
+        let btnHTML = '<div class="btn-group">';
+        if (lesson.imgUrl) {
+          btnHTML += `<button class="btn-material" onclick="event.stopImmediatePropagation(); window.open('${lesson.imgUrl}', '_blank')">课件</button>`;
+        }
+        if (lesson.videoUrl) {
+          btnHTML += `
+            <button class="btn-watch" onclick="event.stopImmediatePropagation(); playVideo('${lesson.videoUrl}')">在线观看</button>
+            <button class="btn-download">下载视频</button>
+          `;
+        }
+        btnHTML += '</div>';
+
+        lessonEl.innerHTML = `
+          <div class="lesson-circle">${lesson.id}</div>
+          <div class="lesson-info">
+            <div>${lesson.title}</div>
+            <div style="font-size:0.875rem;color:#64748b;">${mins}分${secs}秒</div>
+          </div>
+          ${lesson.highlight ? '<div class="highlight-tag">最近学习</div>' : ''}
+          ${btnHTML}
+        `;
+
+        const downloadBtn = lessonEl.querySelector('.btn-download');
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', event => {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            downloadVideo(lesson);
+          });
+        }
+
+        const circle = lessonEl.querySelector('.lesson-circle');
+        circle.addEventListener('click', event => {
+          event.stopImmediatePropagation();
+          toggleCompletion(courseId, lesson.chapterId, lesson.id);
+        });
+
+        contentDiv.appendChild(lessonEl);
+      });
+
+      const header = div.querySelector('.chapter-header');
+      header.addEventListener('click', () => {
+        const content = div.querySelector('.chapter-content');
+        const newState = !content.classList.contains('expanded');
+        content.classList.toggle('expanded');
+        header.classList.toggle('expanded');
+        expandedStates[key] = newState;
+      });
+
+      return div;
+    }
+
+    function renderCurrentCourse() {
+      const container = document.getElementById('course-content');
+      const course = coursesData[currentCourseIndex];
+      if (!course) return;
+
+      const progress = calculateProgress(course);
+      container.innerHTML = `
+        <div class="course-toolbar">
+          <div>
+            <h2>${course.title}</h2>
+            <div class="course-progress">已完成 ${progress}%</div>
+          </div>
+          <button class="btn-batch-download" onclick="downloadCurrentCourse()">一键下载当前课程</button>
+        </div>
+        <div id="chapters-container"></div>
+      `;
+
+      const chaptersContainer = container.querySelector('#chapters-container');
+      course.chapters.forEach(chapter => {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        const hasMatch = !lowerSearchTerm
+          || chapter.title.toLowerCase().includes(lowerSearchTerm)
+          || chapter.lessons.some(lesson => lesson.title.toLowerCase().includes(lowerSearchTerm));
+        if (hasMatch) chaptersContainer.appendChild(createChapterElement(course.id, chapter));
+      });
+    }
+
+    function filterLessons() {
+      searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      renderCurrentCourse();
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.getAttribute('data-theme') === 'dark';
+      const newTheme = isDark ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      document.querySelector('.theme-toggle').innerText = newTheme === 'dark' ? '☀️' : '🌙';
+    }
+
+    window.onload = () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.body.setAttribute('data-theme', savedTheme);
+      document.querySelector('.theme-toggle').innerText = savedTheme === 'dark' ? '☀️' : '🌙';
+      loadCourses();
+    };
+  </script>
+</body>
+</html>
